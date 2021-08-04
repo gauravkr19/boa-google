@@ -89,6 +89,21 @@ kubectl apply -f ../../kubernetes-manifests/balance-reader.yaml
 kubectl apply -f ../../kubernetes-manifests/ledger-writer.yaml
 kubectl apply -f ../../kubernetes-manifests/transaction-history.yaml
 ```
+**Runtime Spec:**
+```
+cd bank-of-anthos/extras/asm-multicluster
+kubectl apply -f ./kubernetes-manifests-db -n NAMESPACE
+```
+After the above deployment run the below command to extract EXTERNAL-IP of accounts-db and ledger-db services and change the config.yaml file in kubernetes-manifist folder. Update the same IP address in ACCOUNTS_DB_URI and SPRING_DATASOURCE_URL.
+```
+kubectl get svc -n NAMESPACE
+```
+Execute below commands to deploy Bank Of Anthos application
+```
+kubectl apply -f ./extras/jwt/jwt-secret.yaml -n NAMESPACE
+kubectl apply -f ./kubernetes-manifests -n NAMESPACE
+```
+**Runtime spec End**
 
 6. **Verify that the pods start up successfully.** Note that you should see 2 containers per pod `(2/2)`, one containing the Bank of Anthos service container, the other containing the ASM sidecar proxy (Envoy). 
 
