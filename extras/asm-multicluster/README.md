@@ -103,7 +103,7 @@ Execute below commands to deploy Bank Of Anthos application
 kubectl apply -f ./extras/jwt/jwt-secret.yaml -n NAMESPACE
 kubectl apply -f ./kubernetes-manifests -n NAMESPACE
 ```
-**Runtime spec End**
+Runtime spec End
 
 6. **Verify that the pods start up successfully.** Note that you should see 2 containers per pod `(2/2)`, one containing the Bank of Anthos service container, the other containing the ASM sidecar proxy (Envoy). 
 
