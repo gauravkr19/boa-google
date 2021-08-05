@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: jib-maven-tr
+spec:
+  taskRef:
+    name: jib-maven
+  params:
+  - name: IMAGE
+    value: docker.io/gauravkr19/balreader
+  - name: DIRECTORY
+    value: ./src/balancereader/src
+  workspaces:
+  - name: source
+    persistentVolumeClaim:
+      claimName: mypvc

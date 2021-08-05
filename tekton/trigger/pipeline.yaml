@@ -1,0 +1,256 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-triggers-example-sa
+  namespace: demo-app
+secrets:
+  - name: regcred
+  - name: webhook-secret
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tekton-triggers-example-sa
+    namespace: demo-app
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: kaniko-pipeline
+  namespace: demo-app  
+spec:
+  params:
+    - name: image-registry
+      default: docker.io/gauravkr19
+    - name: imageDetails
+      type: string
+    - name: contextDetails
+      type: string
+    - name: dockerfileDetails
+      type: string
+    # - name: imageMongodb
+    #   type: string
+    # - name: contextMongodb
+    #   type: string
+    # - name: dockerfileMongodb
+    #   type: string
+    # - name: imageMysql
+    #   type: string
+    # - name: contextMysql
+    #   type: string
+    # - name: dockerfileMysql
+    #   type: string
+    - name: imageProdpage
+      type: string
+    - name: contextProdpage
+      type: string
+    - name: dockerfileProdpage
+      type: string
+    - name: imageRatings
+      type: string
+    - name: contextRatings
+      type: string
+    - name: dockerfileRatings
+      type: string
+    - name: imageReviews-v1
+      type: string
+    - name: imageReviews-v2
+      type: string
+    - name: imageReviews-v3
+      type: string
+    - name: contextReviews
+      type: string
+    - name: dockerfileReviews
+      type: string
+  workspaces:
+    - name: git-source
+  tasks:
+    - name: fetch-from-git
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: https://github.com/gauravkr19/tekton-pipeline.git
+        - name: revision
+          value: master
+      workspaces:
+        - name: output
+          workspace: git-source
+    - name: build-image-details
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/details
+        - name: CONTEXT
+          value: src/details
+        - name: DOCKERFILE
+          value: $(workspaces.source.path)/src/details/Dockerfile
+      workspaces:
+        - name: source
+          workspace: git-source                                                            
+    - name: build-image-prodpage
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/prodpage
+        - name: CONTEXT
+          value: src/productpage
+        - name: DOCKERFILE
+          value: $(workspaces.source.path)/src/productpage/Dockerfile
+      workspaces:
+        - name: source
+          workspace: git-source
+    - name: build-image-ratings
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/ratings
+        - name: CONTEXT
+          value: src/ratings
+        - name: DOCKERFILE
+          value: $(workspaces.source.path)/src/ratings/Dockerfile
+      workspaces:
+        - name: source
+          workspace: git-source
+    - name: build-image-reviews-v1
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/reviews-v1
+        - name: CONTEXT
+          value: src/reviews/reviews-wlpcfg
+        - name: DOCKERFILE
+          value: $(workspaces.source.path)/src/reviews/reviews-wlpcfg/Dockerfile
+      workspaces:
+        - name: source
+          workspace: git-source          
+    - name: build-image-reviews-v2
+      runAfter: [build-image-reviews-v1]
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/reviews-v2
+        - name: CONTEXT
+          value: src/reviews/reviews-wlpcfg
+        - name: DOCKERFILE
+          value: $(workspaces.source.path)/src/reviews/reviews-wlpcfg/Dockerfile
+      workspaces:
+        - name: source
+          workspace: git-source          
+    - name: build-image-reviews-v3
+      runAfter: [build-image-reviews-v2]
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/reviews-v3
+        - name: CONTEXT
+          value: src/reviews/reviews-wlpcfg
+        - name: DOCKERFILE
+          value: $(workspaces.source.path)/src/reviews/reviews-wlpcfg/Dockerfile
+      workspaces:
+        - name: source
+          workspace: git-source          
+    - name: deploy-app-details
+      taskRef:
+        name: app-deploy-kubectl
+      params:
+      - name: imageURL
+        value: $(params.image-registry)/details@$(tasks.build-image-details.results.IMAGE-DIGEST)
+      - name: path
+        value: $(workspaces.source.path)/manifests/details.yaml
+      - name: yqArg
+        value: "-d2"
+      - name: yamlPathToImage
+        value: "spec.template.spec.containers[0].image"
+      workspaces:
+      - name: source
+        workspace: git-source                                                                        
+    - name: deploy-app-prodpage
+      taskRef:
+        name: app-deploy-kubectl
+      params:
+      - name: imageURL
+        value: $(params.image-registry)/prodpage@$(tasks.build-image-prodpage.results.IMAGE-DIGEST)
+      - name: path
+        value: $(workspaces.source.path)/manifests/prodpage.yaml
+      - name: yqArg
+        value: "-d2"
+      - name: yamlPathToImage
+        value: "spec.template.spec.containers[0].image"
+      workspaces:
+      - name: source
+        workspace: git-source                                                                        
+    - name: deploy-app-ratings
+      taskRef:
+        name: app-deploy-kubectl
+      params:
+      - name: imageURL
+        value: $(params.image-registry)/ratings@$(tasks.build-image-ratings.results.IMAGE-DIGEST)
+      - name: path
+        value: $(workspaces.source.path)/manifests/ratings.yaml
+      - name: yqArg
+        value: "-d2"
+      - name: yamlPathToImage
+        value: "spec.template.spec.containers[0].image"
+      workspaces:
+      - name: source
+        workspace: git-source                                                                        
+    - name: deploy-app-reviews-v1
+      taskRef:
+        name: app-deploy-kubectl
+      params:
+      - name: imageURL
+        value: $(params.image-registry)/reviews-v1@$(tasks.build-image-reviews-v1.results.IMAGE-DIGEST)
+      - name: path
+        value: $(workspaces.source.path)/manifests/reviews-v1.yaml
+      - name: yqArg
+        value: "-d2"
+      - name: yamlPathToImage
+        value: "spec.template.spec.containers[0].image"
+      workspaces:
+      - name: source
+        workspace: git-source                                                                        
+    - name: deploy-app-reviews-v2
+      taskRef:
+        name: app-deploy-kubectl
+      params:
+      - name: imageURL
+        value: $(params.image-registry)/reviews-v2@$(tasks.build-image-reviews-v2.results.IMAGE-DIGEST)
+      - name: path
+        value: $(workspaces.source.path)/manifests/reviews-v2.yaml
+      - name: yqArg
+        value: "-d0"
+      - name: yamlPathToImage
+        value: "spec.template.spec.containers[0].image"
+      workspaces:
+      - name: source
+        workspace: git-source                                                                        
+    - name: deploy-app-reviews-v3
+      taskRef:
+        name: app-deploy-kubectl
+      params:
+      - name: imageURL
+        value: $(params.image-registry)/reviews-v3@$(tasks.build-image-reviews-v3.results.IMAGE-DIGEST)
+      - name: path
+        value: $(workspaces.source.path)/manifests/reviews-v3.yaml
+      - name: yqArg
+        value: "-d0"
+      - name: yamlPathToImage
+        value: "spec.template.spec.containers[0].image"
+      workspaces:
+      - name: source
+        workspace: git-source                                                                        
+

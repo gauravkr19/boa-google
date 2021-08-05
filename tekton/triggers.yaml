@@ -1,0 +1,84 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: demo-app-triggertemplate
+  namespace: demo-app
+spec:
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: demo-app-pipeline-run-
+        namespace: demo-app
+      spec:
+        serviceAccountName: tekton-triggers-example-sa
+        pipelineRef:
+          name: kaniko-pipeline
+        params:
+          - name: imageDetails
+            value: $(params.image-registry)/details
+          - name: contextDetails
+            value: ./src/details
+          - name: dockerfileDetails
+            value: ./src/details/Dockerfile
+          - name: imageProdpage
+            value: $(params.image-registry)/Prodpage
+          - name: contextProdpage
+            value: ./src/productpage/
+          - name: dockerfileProdpage
+            value: ./src/productpage/Dockerfile
+          - name: imageRatings
+            value: $(params.image-registry)/ratings
+          - name: contextRatings
+            value: ./src/ratings/
+          - name: dockerfileRatings
+            value: ./src/ratings/Dockerfile 
+          - name: imageReviews-v1
+            value: $(params.image-registry)/reviews-v1
+          - name: imageReviews-v2
+            value: $(params.image-registry)/reviews-v2
+          - name: imageReviews-v3
+            value: $(params.image-registry)/reviews-v3
+          - name: contextReviews
+            value: ./src/reviews/reviews-wlpcfg
+          - name: dockerfileReviews
+            value: ./src/reviews/reviews-wlpcfg/Dockerfile                      
+          - name: url
+            value: https://github.com/gauravkr19/tekton-pipeline.git
+          - name: revision
+            value: master                           
+        workspaces:
+        - name: git-source
+          persistentVolumeClaim:
+            claimName: mypvc
+        - name: dockerconfig
+          secret:
+            secretName: regcred           
+                        
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: demo-app-pipelinebinding
+  namespace: demo-app
+spec:
+  params:
+    - name: gitrevision
+      value: $(body.head_commit.id)
+    - name: namespace
+      value: demo-app
+    - name: gitrepositoryurl
+      value: "https://github.com/$(body.repository.full_name)"
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: demo-app-listener
+  namespace: demo-app
+spec:
+  serviceAccountName: tekton-triggers-example-sa
+  triggers:
+    - bindings:
+      - ref: demo-app-pipelinebinding
+      template:
+        ref: demo-app-triggertemplate
